@@ -1,0 +1,49 @@
+MODULE main
+    VAR
+        pr1: process prc(pr2.st, pr2.b, k,FALSE);
+        pr2: process prc(pr1.st, pr1.b, k,TRUE);
+        k: boolean;
+    ASSIGN
+        init(k) := FALSE;
+    -- safety
+    LTLSPEC G ! (pr1.st = c & pr2.st = c)
+    --starvation freeness
+    LTLSPEC G (pr1.st = r -> F pr1.st = c)
+    LTLSPEC G (pr2.st = r -> F pr2.st = c)
+    --deadlock freeness
+    --ph2 = ((pr1.st=c)->(G(!(pr1.st = c))|(!(pr1.st = c))U pr2.st = c))
+    --ph1 = (pr1.st = c)->(G(pr1.st=c)|((pr1.st) U (phi2)))
+    LTLSPEC ! F (G ((pr1.st = w)&(pr2.st=w)))
+    --strict
+    LTLSPEC G(pr1.st=c -> ( G pr1.st=c | (pr1.st=c U(!(pr1.st=c) & G !(pr1.st=c) | ((!(pr1.st=c)) U pr2.st=c)))))
+     
+   
+    --no strict seuencing CTL
+    CTLSPEC EF((pr1.st=c) & E[(pr1.st=c) U (!(pr1.st=c)& E[!(pr2.st=c) U pr1.st = c])])
+
+MODULE prc(other-st,other-b, k,myk )
+    VAR
+        st: {n,r, w, c, rel};
+        b: boolean;
+    ASSIGN
+        init(st) := n;
+        init(b) := TRUE;
+        next(st) := case
+                (st = n) : {n,r};
+		(st = r) : w;
+                (st = w) & (myk = k) : c;
+                (st = w) & (myk = TRUE)  : w;
+                (st = c)  : {c , rel};
+                (st = rel) : n;
+                TRUE        : st;
+        esac;
+    next(k) := case
+            st = w  & other-b & (myk !=k ) = TRUE : !k;
+            TRUE : k;
+        esac;
+    next(b) := case
+            (st = rel) : TRUE;
+            (st = n) : FALSE;
+            TRUE    : b;
+        esac;
+FAIRNESS running
